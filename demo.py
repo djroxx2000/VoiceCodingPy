@@ -5,23 +5,31 @@ from tkinter import messagebox
 from tkinter.messagebox import *
 from tkinter.filedialog import *
 
+import speech_recognition as sr
+
 class Notepad():
 	__root = Tk() 
 
 	# default window width and height 
 	__thisWidth = 300
 	__thisHeight = 300
+	__thisLineNumberBar = Text(__root, width = 4, state = 'disabled', wrap='none')
 	__thisTextArea = Text(__root) 
 	__thisMenuBar = Menu(__root) 
 	__thisFileMenu = Menu(__thisMenuBar, tearoff=0)
 	__thisEditMenu = Menu(__thisMenuBar, tearoff=0)
 	__thisHelpMenu = Menu(__thisMenuBar, tearoff=0)
+	__thisCursorInfoBar = Label(__thisTextArea, text = "Line: 1 | Column: 1")
 
 	__thisKeyWordList = ['False', 'None', 'True', 'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield', 'self']
 	
 	# To add scrollbar 
 	__thisScrollBar = Scrollbar(__thisTextArea)
 	__file = None
+
+	#Voice Recognition Object
+	voice = sr.Recognizer()
+
 
 	def __init__(self, **kwargs):
 		# Open Maximized
@@ -65,7 +73,15 @@ class Notepad():
 		self.__root.grid_columnconfigure(0, weight=1) 
 
 		# Add controls (widget) 
-		self.__thisTextArea.grid(sticky = N + E + S + W) 
+		self.__thisLineNumberBar.pack(side=LEFT,fill='y')
+		self.__thisTextArea.pack(expand='yes', fill='both')
+
+		# Equal font size for Text
+		self.__thisTextArea.config(font=("Helvetica",32))
+		self.__thisLineNumberBar.config(font=("Helvetica", 13))
+
+		# Change editor element data
+		self.__thisTextArea.bind('<Any-KeyPress>', self.on_content_changed)
 		
 		# To open new file 
 		self.__thisFileMenu.add_command(label="New", command=self.__newFile)	 
@@ -108,11 +124,14 @@ class Notepad():
 
 		self.__root.config(menu=self.__thisMenuBar)
 
-		self.__thisScrollBar.pack(side=RIGHT,fill=Y)
+		self.__thisScrollBar.pack(side=RIGHT,fill=Y,anchor='e')
+		self.__thisCursorInfoBar.pack(expand='no', fill='none', side='right', anchor='se')
+
 
 		# Scrollbar will adjust automatically according to the content
-		self.__thisScrollBar.config(command=self.__thisTextArea.yview)
+		self.__thisScrollBar.config(command=self.multiple_yview)
 		self.__thisTextArea.config(yscrollcommand=self.__thisScrollBar.set)
+		self.__thisLineNumberBar.config(yscrollcommand=self.__thisScrollBar.set)
 
         # Textarea Config: Current_line_background_color | Font_style
 		self.__thisTextArea.tag_configure("current_line", background="#e9e9e9")
@@ -128,6 +147,8 @@ class Notepad():
 		self.menu.add_command(label="Paste", command=self.__paste)
 		self.menu.add_command(label="Undo", command=self.__undo)
 		self.menu.add_command(label="Redo", command=self.__redo)
+		self.menu.add_command(label="Search", command=self.find_text)
+		self.menu.add_command(label="Speak", command=self.voice_command)
 		self.menu.add_separator()
 		self.menu.add_command(label="Select All", command=self.__select_all)
 		self.menu.add_separator()
@@ -135,6 +156,25 @@ class Notepad():
 
 		# Close Window
 		self.__root.protocol("WM_DELETE_WINDOW", self.__quitApplication)
+		
+
+	def voice_command(self):
+		try:
+			with sr.Microphone() as source:
+				self.voice.adjust_for_ambient_noise(source)
+				stream = self.voice.listen(source)
+
+				id_text = self.voice.recognize_google(stream)
+
+				if id_text == "quit application":
+					self.__quitApplication()
+				self.insert_word(id_text)
+		except sr.RequestError as e:
+			print("Could not request results: {0}".format(e))
+
+		except sr.UnknownValueError:
+			print("I did not understand that")
+			self.insert_word("I did not understand")
 
 	def __quitApplication(self):
 		answer = False
@@ -146,7 +186,7 @@ class Notepad():
 			self.__root.destroy()
 
 	def __showAbout(self):
-		showinfo("Notepad","Created by: Karan Shah & Dhanajay Shettigar")
+		showinfo("Notepad","Created by: Karan Shah & Dhananjay Shettigar")
 
 	def __openFile(self):
 		self.__file = askopenfilename(defaultextension=".py", filetypes=[("Python Files","*.py")])
@@ -228,6 +268,115 @@ class Notepad():
 	def show_menu_(self, event):
 		# Show Right Click Menu
   		self.menu.tk_popup(event.x, event.y)
+
+	def get_line_numbers(self):
+		output = ''
+		row,col = self.__thisTextArea.index("end").split('.')
+		for i in range(1,int(row)):
+			output += str(i) + "\n"
+		return output
+	
+	def update_line_numbers(self, event=None):
+		line_numbers= self.get_line_numbers()
+		self.__thisLineNumberBar.config(state='normal')
+		self.__thisLineNumberBar.delete('1.0','end')
+		self.__thisLineNumberBar.insert('1.0',line_numbers)
+		self.__thisLineNumberBar.config(state='disabled')
+
+	def update_cursor_info_bar(self, event=None):
+		row, col = self.__thisTextArea.index(INSERT).split('.')
+		line_num, col_num = str(int(row)), str(int(col) + 1)  # col starts at 0
+		infotext = "Line: {0} | Column: {1}".format(line_num, col_num)
+		self.__thisCursorInfoBar.config(text=infotext)
+
+	def on_content_changed(self, event=None):
+		self.update_line_numbers()
+		self.update_cursor_info_bar()
+
+	def multiple_yview(self, *args):
+			self.__thisTextArea.yview(*args)
+			self.__thisLineNumberBar.yview(*args)
+
+	# search window
+	def find_text(self, event=None):
+		__thisSearchWindow = Toplevel(self.__root)
+		__thisSearchWindow.title('Find Text')
+		__thisSearchWindow.transient(self.__root)
+
+		Label(__thisSearchWindow, text="Find All:").grid(row=0, column=0, sticky='e')
+
+		search_entry_widget = Entry(__thisSearchWindow, width=25)
+		search_entry_widget.grid(row=0, column=1, padx=2, pady=2, sticky='we')
+		search_entry_widget.focus_set()
+		ignore_case_value = IntVar()
+		Checkbutton(__thisSearchWindow, text='Ignore Case', variable=ignore_case_value).grid(row=1, column=1, sticky='e', padx=2, pady=2)
+
+		Button(__thisSearchWindow, text="Find All", underline=0, 
+		command = lambda: self.search_output(search_entry_widget.get(), 
+		ignore_case_value.get(),
+		self.__thisTextArea, 
+		__thisSearchWindow, 
+		search_entry_widget)).grid(row=0, column=2, sticky='e' + 'w', padx=2, pady=2)
+
+		def close_search_window():
+			self.__thisTextArea.tag_remove('match', '1.0', END)
+			__thisSearchWindow.destroy()
+		__thisSearchWindow.protocol('WM_DELETE_WINDOW', close_search_window)
+		return "break"
+
+
+	def search_output(self, search_key, if_ignore_case, content_text,
+					search_toplevel, search_box):
+		content_text.tag_remove('match', '1.0', END)
+		matches_found = 0
+		positions = []
+		if search_key:
+			start_pos = '1.0'
+			while True:
+				start_pos = content_text.search(search_key, start_pos,
+												nocase=if_ignore_case, stopindex=END)
+				if not start_pos:
+					break
+				end_pos = '{}+{}c'.format(start_pos, len(search_key))
+				positions.append(start_pos)
+				content_text.tag_add('match', start_pos, end_pos)
+				matches_found += 1
+				start_pos = end_pos
+			content_text.tag_config(
+				'match', foreground='red', background='yellow')
+		self.__thisTextArea.mark_set("insert", positions[0] + '+3c')				
+		self.__thisTextArea.focus_set()
+		
+		search_toplevel.title('{} matches found'.format(matches_found))
+
+
+	def insert_word(self, words):
+		pos=self.__thisTextArea.index('insert')
+		self.__thisTextArea.insert(pos,words)
+
+
+
+
+# class VoiceRecognition(Notepad):
+# 	voice = sr.Recognizer()
+
+# 	while 1:
+# 		try:
+# 			with sr.Microphone() as source:
+# 				voice.adjust_for_ambient_noise(source)
+# 				stream = voice.listen(source)
+
+# 				id_text = voice.recognize_google(stream)
+
+# 				if id_text == "end session":
+# 					break
+# 		except sr.RequestError as e:
+# 			print("Could not request results: {0}".format(e))
+
+# 		except sr.UnknownValueError:
+# 			print("I did not understand that")
+# 			# voice_label("I did not understand that")
+
 
 
 # Run main application
