@@ -140,6 +140,8 @@ class Notepad():
 		answer = False
 		if self.__root.title() == "Untitled - Notepad" and self.__thisTextArea.get(1.0, END) != "\n":
 			answer = messagebox.askyesno("Warning","File not saved! Do you want to exit?")
+		if answer == False and self.__thisTextArea.get(1.0, END) != "\n":
+			self.__saveFile()
 		if answer == True or self.__thisTextArea.get(1.0, END) == "\n":
 			self.__root.destroy()
 
