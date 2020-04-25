@@ -1,4 +1,5 @@
 import threading
+import multiprocessing
 import os
 
 import tkinter  
@@ -167,22 +168,27 @@ class Notepad():
 		
 	#Command to turn mic on for input
 	def voice_command(self):
-		try:
-			with sr.Microphone() as source:
-				self.voice.adjust_for_ambient_noise(source)
-				stream = self.voice.listen(source)
+		def callback():
+			while True:
+				try:
+					with sr.Microphone() as source:
+						self.voice.adjust_for_ambient_noise(source)
+						stream = self.voice.listen(source)
 
-				id_text = self.voice.recognize_google(stream)
+						id_text = self.voice.recognize_google(stream)
 
-				if id_text == "quit application":
-					self.__quitApplication()
-				self.insert_word(id_text)
-		except sr.RequestError as e:
-			print("Could not request results: {0}".format(e))
+						if id_text == "quit application":
+							self.__quitApplication()
+						self.insert_word(id_text)
+						print(id_text)
+				except sr.RequestError as e:
+					print("Could not request results: {0}".format(e))
 
-		except sr.UnknownValueError:
-			print("I did not understand that")
-			self.insert_word("I did not understand")
+				except sr.UnknownValueError:	
+					print("I did not understand that")
+					self.insert_word("I did not understand")
+		voice_thread = threading.Thread(target = callback)
+		voice_thread.start()
 
 	def __quitApplication(self):
 		answer = False
@@ -260,6 +266,7 @@ class Notepad():
 
 	def run(self):
 		# Run main application
+		self.voice_command()
 		self.__root.mainloop()
 
 	def _highlight(self, interval=100):
@@ -410,9 +417,8 @@ class Notepad():
 # 			print("I did not understand that")
 # 			# voice_label("I did not understand that")
 
-
+			
 
 # Run main application
 notepad = Notepad(width=600,height=400)
-#voice_thread = threading.Thread(target = notepad.voice_command())
-editor_thread = threading.Thread(target = notepad.run())
+notepad.run()
