@@ -1,5 +1,7 @@
-import tkinter 
-import os	 
+import threading
+import os
+
+import tkinter  
 from tkinter import *
 from tkinter import messagebox
 from tkinter.messagebox import *
@@ -13,7 +15,7 @@ class Notepad():
 	# default window width and height 
 	__thisWidth = 300
 	__thisHeight = 300
-	__thisLineNumberBar = Text(__root, width = 4, state = 'disabled', wrap='none')
+	__thisLineNumberBar = Text(__root, width = 4, state = 'disabled', wrap='none', cursor='arrow')
 	__thisTextArea = Text(__root) 
 	__thisMenuBar = Menu(__root) 
 	__thisFileMenu = Menu(__thisMenuBar, tearoff=0)
@@ -82,6 +84,8 @@ class Notepad():
 
 		# Change editor element data
 		self.__thisTextArea.bind('<Any-KeyPress>', self.on_content_changed)
+		self.__thisTextArea.bind('<space>', self.highlight_keywords)
+		self.__thisTextArea.bind('<Return>', self.highlight_keywords)
 		
 		# To open new file 
 		self.__thisFileMenu.add_command(label="New", command=self.__newFile)	 
@@ -140,6 +144,10 @@ class Notepad():
         # Highlight Current Line
 		self._highlight()
 
+		# Text Area Theme
+		self.__thisTextArea.config(fg = "#FFFFFF", background = "#1F1B24")
+		self.__thisLineNumberBar.config(fg = "#FFFFFF", background = "#121212")
+
         # Right Click Pop-Up Menu
 		self.menu = Menu(self.__thisTextArea.master)
 		self.menu.add_command(label="Copy", command=self.__copy)
@@ -148,7 +156,7 @@ class Notepad():
 		self.menu.add_command(label="Undo", command=self.__undo)
 		self.menu.add_command(label="Redo", command=self.__redo)
 		self.menu.add_command(label="Search", command=self.find_text)
-		self.menu.add_command(label="Speak", command=self.voice_command)
+		self.menu.add_command(label="last word", command=self.highlight_keywords)
 		self.menu.add_separator()
 		self.menu.add_command(label="Select All", command=self.__select_all)
 		self.menu.add_separator()
@@ -157,7 +165,7 @@ class Notepad():
 		# Close Window
 		self.__root.protocol("WM_DELETE_WINDOW", self.__quitApplication)
 		
-
+	#Command to turn mic on for input
 	def voice_command(self):
 		try:
 			with sr.Microphone() as source:
@@ -260,7 +268,7 @@ class Notepad():
 			Syntax Highlighting
 		'''
 
-		self.__thisTextArea.tag_config("highlightKeyword", foreground="orange")
+		self.__thisTextArea.tag_config("current_line", foreground="#000000", background = "#a4a4a4")
 		self.__thisTextArea.tag_remove("current_line", 1.0, "end")
 		self.__thisTextArea.tag_add("current_line", "insert linestart", "insert lineend+1c")
 		self.__thisTextArea.after(interval, self._highlight)
@@ -288,6 +296,32 @@ class Notepad():
 		line_num, col_num = str(int(row)), str(int(col) + 1)  # col starts at 0
 		infotext = "Line: {0} | Column: {1}".format(line_num, col_num)
 		self.__thisCursorInfoBar.config(text=infotext)
+
+	def highlight_keywords(self, event=None):
+		pos_insert = self.__thisTextArea.index(INSERT)
+		row,col = pos_insert.split('.')
+		if pos_insert == END:
+			row -= 1
+		row_str = str(row)
+		start_pos = row_str + ".0"
+		positions = []
+
+		while True:
+			start_pos = self.__thisTextArea.search(" ", start_pos, stopindex = END, nocase = False)
+			if not start_pos:
+				break
+			start_pos += "+1c"
+			positions.append(start_pos)
+		
+		pos_len = len(positions)
+		if pos_len != 0:
+			start_pos = positions[pos_len-1]
+		else:
+			start_pos = row_str + ".0"
+		last_word = self.__thisTextArea.get(start_pos, "end-1c")
+		if last_word in self.__thisKeyWordList:
+			self.__thisTextArea.tag_add('keyword', start_pos,"end-1c")
+			self.__thisTextArea.tag_config('keyword', foreground = 'purple')
 
 	def on_content_changed(self, event=None):
 		self.update_line_numbers()
@@ -349,7 +383,6 @@ class Notepad():
 		
 		search_toplevel.title('{} matches found'.format(matches_found))
 
-
 	def insert_word(self, words):
 		pos=self.__thisTextArea.index('insert')
 		self.__thisTextArea.insert(pos,words)
@@ -381,4 +414,5 @@ class Notepad():
 
 # Run main application
 notepad = Notepad(width=600,height=400)
-notepad.run()
+#voice_thread = threading.Thread(target = notepad.voice_command())
+editor_thread = threading.Thread(target = notepad.run())
