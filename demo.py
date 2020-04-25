@@ -1,6 +1,6 @@
 import threading
-import multiprocessing
 import os
+import sys
 
 import tkinter  
 from tkinter import *
@@ -198,6 +198,7 @@ class Notepad():
 			self.__saveFile()
 		if answer == True or self.__thisTextArea.get(1.0, END) == "\n":
 			self.__root.destroy()
+		sys.exit()
 
 	def __showAbout(self):
 		showinfo("Notepad","Created by: Karan Shah & Dhananjay Shettigar")
@@ -422,3 +423,4 @@ class Notepad():
 # Run main application
 notepad = Notepad(width=600,height=400)
 notepad.run()
+
