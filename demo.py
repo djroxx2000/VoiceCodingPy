@@ -308,7 +308,6 @@ class Notepad():
 
             pos = str(line) + "." + str(column)
             self.__thisTextArea.mark_set('index', pos)
-            break
 
         elif words[i] == "select":
             line = 0
@@ -323,31 +322,24 @@ class Notepad():
                 pos = str(line) + ".0"
                 end = str(line) + ".end"
                 self.__thisTextArea.tag_add('sel', pos, end)
-            break
 
         elif words[i] == "undo":
             self.__undo()
-            break
 
         elif words[i] == "redo":
             self.__redo()
-            break
 
         elif words[i] == "cut":
             self.__cut()
-            break
 
         elif words[i] == "copy":
             self.__copy()
-            break
 
         elif words[i] == "paste":
             self.__paste()
-            break
 
         elif words[i] == "save":
             self.__saveFile()
-            break
 
         else:
             self.__thisVoiceInfoBar.config(text="Voice: Command Failed")
