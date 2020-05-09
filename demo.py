@@ -20,13 +20,14 @@ class Notepad():
     __thisHeight = 300
     __thisLineNumberBar = Text(
         __root, width=4, state='disabled', wrap='none', cursor='arrow')
-    __thisTextArea = Text(__root)
+    __thisTextArea = Text(__root, undo=True)
     __thisMenuBar = Menu(__root)
     __thisFileMenu = Menu(__thisMenuBar, tearoff=0)
     __thisEditMenu = Menu(__thisMenuBar, tearoff=0)
     __thisHelpMenu = Menu(__thisMenuBar, tearoff=0)
     __thisCursorInfoBar = Label(__thisTextArea, text="Line: 1 | Column: 1")
     __thisVoiceInfoBar = Label(__thisTextArea, text="Voice: Deactivated ")
+    __thisVarDictLabel = Label(__thisTextArea)
 
     __thisKeyWordList = ['False', 'None', 'True', 'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except', 'finally',
                          'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield', 'self']
@@ -38,9 +39,18 @@ class Notepad():
     __thisScrollBar = Scrollbar(__thisTextArea)
     __file = None
 
+    # Store Variables as dictionary for easily spoken names
+    __thisVariableList = {}
+
+    # Toggle Variable Dictionary Label
+    __thisVarDictShow = BooleanVar()
+    __thisVarDictShow.set(False)
+
     # Voice Recognition Object
     voice = sr.Recognizer()
     voice_activate = BooleanVar()
+
+    # Voice Recognition Toggle
     voice_activate.set(False)
 
     def __init__(self, **kwargs):
@@ -131,6 +141,14 @@ class Notepad():
         # To give a feature of text search
         self.__thisEditMenu.add_command(label="Search", command=self.find_text)
 
+        # To give feature of adding to voice friendly variable dictionary
+        self.__thisEditMenu.add_command(
+            label="Add Variable", command=self.var_dict_add)
+
+        # To Show the current variables in dictionary
+        self.__thisEditMenu.add_checkbutton(label="Show Variables", onvalue=1, offvalue=0,
+                                            variable=self.__thisVarDictShow, command=self.var_dict_label_toggle)
+
         # To give a feature of selecting all text
         self.__thisEditMenu.add_command(
             label="Select All", command=self.__select_all)
@@ -147,9 +165,9 @@ class Notepad():
 
         self.__thisScrollBar.pack(side=RIGHT, fill=Y, anchor='e')
         self.__thisCursorInfoBar.pack(
-            expand='no', fill='none', side='right', anchor='se')
+            expand='no', fill='none', anchor='se', side=BOTTOM)
         self.__thisVoiceInfoBar.pack(
-            expand='no', fill='none', side='right', anchor='se')
+            expand='no', fill='none', anchor='se', side=BOTTOM)
 
         # Scrollbar will adjust automatically according to the content
         self.__thisScrollBar.config(command=self.multiple_yview)
@@ -157,26 +175,25 @@ class Notepad():
         self.__thisLineNumberBar.config(
             yscrollcommand=self.__thisScrollBar.set)
 
-    # Textarea Config: Current_line_background_color | Font_style
+        # Textarea Config: Current_line_background_color | Font_style
         self.__thisTextArea.tag_configure("current_line", background="#e9e9e9")
         self.__thisTextArea.configure(font=(
             "Source Code Pro", 13), highlightbackground="#1e90ff", highlightcolor="#f4f4f4")
 
-    # Highlight Current Line
+        # Highlight Current Line
         self._highlight()
 
         # Text Area Theme
         self.__thisTextArea.config(fg="#FFFFFF", background="#1F1B24")
         self.__thisLineNumberBar.config(fg="#FFFFFF", background="#121212")
 
-    # Right Click Pop-Up Menu
+        # Right Click Pop-Up Menu
         self.menu = Menu(self.__thisTextArea.master)
         self.menu.add_command(label="Copy", command=self.__copy)
         self.menu.add_command(label="Cut", command=self.__cut)
         self.menu.add_command(label="Paste", command=self.__paste)
         self.menu.add_command(label="Undo", command=self.__undo)
         self.menu.add_command(label="Redo", command=self.__redo)
-        self.menu.add_command(label="Search", command=self.find_text)
         self.menu.add_checkbutton(
             label="Activate Voice", onvalue=1, offvalue=0, variable=self.voice_activate, command=self.voice_toggle)
         self.menu.add_separator()
@@ -234,7 +251,7 @@ class Notepad():
                     except sr.UnknownValueError:
                         print("I did not understand that")
                         self.__thisVoiceInfoBar.config(
-                            "Voice: Failed to understand")
+                            text="Voice: Failed to understand")
                         time.sleep(1)
                 else:
                     time.sleep(1)
@@ -249,6 +266,8 @@ class Notepad():
         i = 0
         while i < len(words):
             # Keywords forming indent blocks
+            words[i] = words[i].lower()
+
             if words[i] in self.__thisIndentKeyWordList:
                 output_words.extend([words[i], ":"])
                 current_tabs += 1
@@ -260,7 +279,10 @@ class Notepad():
 
             # ToDo: Form variable dictionaries(type wanted variable name, assign to a number and translate every time)
             elif words[i] == "variable":
-                output_words.insert(words_parsed, words[i+1])
+                var_in = words[i+1]
+                if var_in in self.__thisVariableList:
+                    var_in = self.__thisVariableList[var_in]
+                output_words.insert(words_parsed, var_in)
                 i += 1
 
             elif words[i] == "equals" or words[i] == "=":
@@ -269,8 +291,21 @@ class Notepad():
             elif words[i] == "equal" or words[i] == "assign":
                 output_words.insert(words_parsed, '=')
 
+            elif words[i] == "plus":
+                output_words.insert(words_parsed, '+')
+
+            elif words[i] == "minus" or words[i] == "subtract":
+                output_words.insert(words_parsed, '-')
+
+            elif words[i] == "multiply" or words[i] == "multiple":
+                output_words.insert(words_parsed, '*')
+
+            elif words[i] == "divide" or words[i] == "division":
+                output_words.insert(words_parsed, '/')
+
             elif words[i] == "define":
-                output_words.insert(words_parsed, 'define')
+                output_words.extend(['def', "():"])
+                current_tabs += 1
 
             elif words[i] in ["true", "false", "none"]:
                 output_words.insert(words_parsed, words[i].capitalize())
@@ -369,7 +404,7 @@ class Notepad():
 
     def __openFile(self):
         self.__file = askopenfilename(defaultextension=".py", filetypes=[
-                                      ("Python Files", "*.py")])
+            ("Python Files", "*.py")])
         if self.__file == "":
             # no file to open
             self.__file = None
@@ -518,7 +553,8 @@ class Notepad():
             row=0, column=0, sticky='e')
 
         search_entry_widget = Entry(__thisSearchWindow, width=25)
-        search_entry_widget.grid(row=0, column=1, padx=2, pady=2, sticky='we')
+        search_entry_widget.grid(
+            row=0, column=1, padx=2, pady=2, sticky='we')
         search_entry_widget.focus_set()
         ignore_case_value = IntVar()
         Checkbutton(__thisSearchWindow, text='Ignore Case', variable=ignore_case_value).grid(
@@ -565,6 +601,52 @@ class Notepad():
         pos = self.__thisTextArea.index('insert')
         self.__thisTextArea.insert(pos, words)
 
+    def var_dict_add(self, event=None):
+        __thisVarAddWindow = Toplevel(self.__root)
+        __thisVarAddWindow.title('Variable Dictionary')
+        __thisVarAddWindow.transient(self.__root)
+
+        Label(__thisVarAddWindow, text="Add Voice Friendly Variable Pairs: ").grid(
+            row=0, column=0, sticky='w')
+
+        Label(__thisVarAddWindow, text="Voice Variable (As spoken): ").grid(
+            row=1, column=0, sticky='w')
+        voice_var_entry_widget = Entry(__thisVarAddWindow, width=25)
+        voice_var_entry_widget.grid(
+            row=2, column=0, padx=2, pady=2, sticky='we')
+
+        Label(__thisVarAddWindow, text="Text Variable (In editor): ").grid(
+            row=3, column=0, sticky='w')
+        text_var_entry_widget = Entry(__thisVarAddWindow, width=25)
+        text_var_entry_widget.grid(
+            row=4, column=0, padx=2, pady=2, sticky='we')
+
+        voice_var_entry_widget.focus_set()
+
+        Button(__thisVarAddWindow, text="Add new variable pair", underline=0,
+               command=lambda: add_variable()).grid(
+                   row=5, column=0, sticky='e' + 'w', padx=2, pady=2)
+
+        def add_variable():
+            voice_var = voice_var_entry_widget.get()
+            text_var = text_var_entry_widget.get()
+            self.__thisVariableList.update({voice_var.lower(): text_var})
+            voice_var_entry_widget.delete(0, END)
+            text_var_entry_widget.delete(0, END)
+            voice_var_entry_widget.focus_set()
+            self.var_dict_label_toggle()
+
+    def var_dict_label_toggle(self):
+        if self.__thisVarDictShow.get():
+            label_text = ["Voice : Text"]
+            for voice_var, text_var in self.__thisVariableList.items():
+                label_text.append("{} : {}".format(voice_var, text_var))
+            label_text_joined = '\n'.join(label_text)
+            self.__thisVarDictLabel.config(text=label_text_joined)
+            self.__thisVarDictLabel.pack(
+                expand='no', fill='none', side=TOP, anchor='ne')
+        else:
+            self.__thisVarDictLabel.pack_forget()
 
 # class VoiceRecognition(Notepad):
 # 	voice = sr.Recognizer()
@@ -585,7 +667,8 @@ class Notepad():
 # 		except sr.UnknownValueError:
 # 			print("I did not understand that")
 # 			# voice_label("I did not understand that")
-
 # Run main application
+
+
 notepad = Notepad(width=600, height=400)
 notepad.run()
