@@ -217,8 +217,8 @@ class Notepad():
                             stream = self.voice.listen(source)
 
                             id_text = self.voice.recognize_google(stream)
-                            print(id_text)
                             split_text = id_text.split()
+                            output_words = None
 
                             if id_text == "quit application":
                                 self.__quitApplication()
@@ -233,6 +233,7 @@ class Notepad():
                                     text="Voice: Parsing Command")
                                 split_text.remove("command")
                                 self.parse_voice_command(split_text)
+                                continue
 
                             else:
                                 continue
@@ -279,7 +280,7 @@ class Notepad():
 
             # ToDo: Form variable dictionaries(type wanted variable name, assign to a number and translate every time)
             elif words[i] == "variable":
-                var_in = words[i+1]
+                var_in = words[i+1].lower()
                 if var_in in self.__thisVariableList:
                     var_in = self.__thisVariableList[var_in]
                 output_words.insert(words_parsed, var_in)
