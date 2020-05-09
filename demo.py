@@ -217,7 +217,6 @@ class Notepad():
                             stream = self.voice.listen(source)
 
                             id_text = self.voice.recognize_google(stream)
-                            print(id_text)
                             split_text = id_text.split()
                             output_words = None
 
