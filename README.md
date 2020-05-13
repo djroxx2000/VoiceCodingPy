@@ -1,5 +1,7 @@
 # VoiceCodingPy
+
 ---
+
 ## Features:
 
 1. A Python tkinter GUI based text editor with speech recognition capability
