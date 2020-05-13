@@ -1,6 +1,6 @@
 # VoiceCodingPy
 ---
-##Features:
+## Features:
 
 1. A Python tkinter GUI based text editor with speech recognition capability
 2. Simple context based functions(Undo, Redo, Cut, Copy, Paste)
@@ -10,7 +10,7 @@
 
 ---
 
-##Technologies/Libraries Used: 
+## Technologies/Libraries Used: 
 
 1. Tkinter GUI
 2. Speech Recognition Library
@@ -20,7 +20,7 @@
 
 ---
 
-##How To Run: 
+## How To Run: 
 
 1. Clone the entire git repository to your device or download the zip file
     a. Unzip the downloaded file if you went with downloading the zip 
@@ -29,10 +29,10 @@
 
 ---
 
-###Note: 
+### Note: 
 
-#####1. Requires Python 3.0 and above
-#####2. Requires an active internet connection for speech recogition functions
+##### 1. Requires Python 3.0 and above
+##### 2. Requires an active internet connection for speech recogition functions
 
 
 
